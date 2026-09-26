@@ -1,0 +1,106 @@
+{
+  "name": "antigravity-chat-history",
+  "displayName": "Permanent Chat History",
+  "description": "Never lose chat history again. Complete, instant, searchable chat history for Antigravity IDE across all workspaces.",
+  "version": "1.0.0",
+  "license": "MIT",
+  "author": "Aprajit Sarkar",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AprajitSarkar/antigravity-chat-history.git"
+  },
+  "publisher": "antigravity-community",
+  "keywords": [
+    "antigravity",
+    "antigravity-ide",
+    "chat-history",
+    "ai-chat",
+    "gemini",
+    "developer-tools",
+    "productivity",
+    "vscode-extension",
+    "conversation-history",
+    "session-manager"
+  ],
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other",
+    "Machine Learning",
+    "Productivity"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "scripts": {
+    "test": "node test_extension.js",
+    "install-ext": "node install.js"
+  },
+  "main": "./src/extension.js",
+  "icon": "resources/icon.png",
+  "contributes": {
+    "commands": [
+      {
+        "command": "antigravity-chat-history.refresh",
+        "title": "Refresh Chat History",
+        "icon": "$(refresh)",
+        "category": "Chat History"
+      },
+      {
+        "command": "antigravity-chat-history.syncState",
+        "title": "Sync All to Antigravity State",
+        "icon": "$(sync)",
+        "category": "Chat History"
+      },
+      {
+        "command": "antigravity-chat-history.openChat",
+        "title": "Open Chat",
+        "category": "Chat History"
+      },
+      {
+        "command": "antigravity-chat-history.deleteChat",
+        "title": "Delete Chat",
+        "icon": "$(trash)",
+        "category": "Chat History"
+      },
+      {
+        "command": "antigravity-chat-history.openLogs",
+        "title": "View Transcript Logs",
+        "category": "Chat History"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "antigravity-chat-history",
+          "title": "Chat History",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "antigravity-chat-history": [
+        {
+          "type": "webview",
+          "id": "antigravity-chat-history.view",
+          "name": "Chat History"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "antigravity-chat-history.refresh",
+          "when": "view == antigravity-chat-history.view",
+          "group": "navigation@1"
+        },
+        {
+          "command": "antigravity-chat-history.syncState",
+          "when": "view == antigravity-chat-history.view",
+          "group": "navigation@2"
+        }
+      ]
+    }
+  }
+}

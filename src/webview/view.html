@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat History</title>
+  <link rel="stylesheet" href="{{CSS_URI}}">
+</head>
+<body>
+  <div class="app-header">
+    <div class="title-row">
+      <div class="title-left">
+        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M 20 11.5 C 20 6.8 16.4 3 12 3 C 7.6 3 4 6.8 4 11.5 C 4 13.9 5 16 6.7 17.5 L 5 21 L 9.2 19.6 C 10.1 19.9 11 20 12 20 C 12.3 20 12.7 20 13 19.9" />
+          <circle cx="16.5" cy="16.5" r="4.5" stroke="currentColor" stroke-width="1.6" />
+          <polyline points="16.5 14 16.5 16.5 18.5 17.5" stroke="currentColor" stroke-width="1.5" />
+        </svg>
+        <span class="app-title">Chat History</span>
+        <span class="count-badge" id="totalBadge">0</span>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" id="refreshBtn" title="Refresh Conversations">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+        </button>
+        <button class="icon-btn" id="syncBtn" title="Sync All to Antigravity State">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- View Mode Tabs (All vs By Directory) -->
+    <div class="view-tabs">
+      <button class="tab-btn active" id="tabAll">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="8" y1="6" x2="21" y2="6"></line>
+          <line x1="8" y1="12" x2="21" y2="12"></line>
+          <line x1="8" y1="18" x2="21" y2="18"></line>
+          <line x1="3" y1="6" x2="3.01" y2="6"></line>
+          <line x1="3" y1="12" x2="3.01" y2="12"></line>
+          <line x1="3" y1="18" x2="3.01" y2="18"></line>
+        </svg>
+        <span>All Chats</span>
+      </button>
+      <button class="tab-btn" id="tabByDir">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span>By Directory</span>
+        <span class="dir-count-pill" id="dirCountPill">0</span>
+      </button>
+    </div>
+
+    <!-- Search box -->
+    <div class="search-container">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input type="text" id="searchInput" class="search-input" placeholder="Search chats by title, folder, prompt..." autocomplete="off" spellcheck="false" />
+      <button class="clear-search-btn" id="clearSearchBtn" title="Clear Search">✕</button>
+    </div>
+
+    <!-- Sort & Filter Bar -->
+    <div class="controls-row">
+      <button class="sort-toggle-btn" id="sortToggleBtn" title="Click to reverse sort order">
+        <svg id="sortIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        <span id="sortLabel">Newest First</span>
+      </button>
+
+      <div class="date-chips">
+        <button class="date-chip active" data-date="all">All Time</button>
+        <button class="date-chip" data-date="today">Today</button>
+        <button class="date-chip" data-date="7d">7 Days</button>
+        <button class="date-chip" data-date="30d">30 Days</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-left">
+      <div class="live-pulse"></div>
+      <span id="liveStatusText">Live sync active</span>
+    </div>
+    <span id="showingCountText">Showing 0</span>
+  </div>
+
+  <!-- Main View Container -->
+  <div class="conversations-container" id="convContainer">
+    <!-- Populated by view.js -->
+  </div>
+
+  <!-- Custom Context Menu -->
+  <div class="custom-context-menu" id="contextMenu">
+    <button class="menu-item" id="menuOpenCurrent">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+      </svg>
+      Open in Current Window
+    </button>
+    <button class="menu-item" id="menuOpenTarget">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+      </svg>
+      Open in Workspace Folder
+    </button>
+    <div class="menu-divider"></div>
+    <button class="menu-item" id="menuOpenLogs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+      </svg>
+      View Full Transcript Logs
+    </button>
+    <button class="menu-item" id="menuCopyId">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      Copy Conversation ID
+    </button>
+    <div class="menu-divider"></div>
+    <button class="menu-item danger" id="menuDelete">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>
+      Delete Conversation
+    </button>
+  </div>
+
+  <script src="{{JS_URI}}"></script>
+</body>
+</html>
