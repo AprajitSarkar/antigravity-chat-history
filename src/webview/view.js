@@ -199,11 +199,7 @@
     e.stopPropagation();
     contextMenu.style.display = 'none';
     if (activeContextMenuCid) {
-      const card = convContainer.querySelector(`.conv-card[data-cid="${activeContextMenuCid}"]`);
-      const conv = allConversations.find(c => c.cid === activeContextMenuCid);
-      if (card && conv) {
-        startInlineEdit(card, conv);
-      }
+      vscode.postMessage({ command: 'renameConversationPrompt', cid: activeContextMenuCid });
     }
   });
 
@@ -660,7 +656,7 @@
         e.stopPropagation();
         hideHoverTooltip();
         const rect = menuBtn.getBoundingClientRect();
-        openContextMenu(rect.left - 120, rect.bottom + 4, conv.cid);
+        openContextMenu(rect.right - 175, rect.bottom + 4, conv.cid);
       });
     }
 
@@ -670,12 +666,14 @@
   function openContextMenu(x, y, cid) {
     activeContextMenuCid = cid;
     contextMenu.style.display = 'flex';
-    const menuWidth = 190;
-    const menuHeight = 200;
-    const maxX = window.innerWidth - menuWidth - 8;
-    const maxY = window.innerHeight - menuHeight - 8;
-    contextMenu.style.left = `${Math.min(x, maxX)}px`;
-    contextMenu.style.top = `${Math.min(y, maxY)}px`;
+    const menuWidth = 175;
+    const menuHeight = 220;
+    const maxX = Math.max(8, window.innerWidth - menuWidth - 8);
+    const maxY = Math.max(8, window.innerHeight - menuHeight - 8);
+    const safeLeft = Math.max(8, Math.min(x, maxX));
+    const safeTop = Math.max(8, Math.min(y, maxY));
+    contextMenu.style.left = `${safeLeft}px`;
+    contextMenu.style.top = `${safeTop}px`;
   }
 
   function cleanDisplayPath(p) {

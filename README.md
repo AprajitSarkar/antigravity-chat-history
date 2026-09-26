@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Google%20Antigravity%20IDE-blueviolet.svg)](#)
-[![Version](https://img.shields.io/badge/Version-1.0.0-green.svg)](#)
+[![Version](https://img.shields.io/badge/Version-1.1.0-green.svg)](#)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#)
 
 > **Never lose AI chat history again.** A high-performance, permanent, searchable chat history sidebar extension for **Google Antigravity IDE** that guarantees 100% of your AI conversations, trajectory logs, and prompts remain preserved across laptop restarts, IDE reloads, and workspace switches.

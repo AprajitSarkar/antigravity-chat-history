@@ -216,20 +216,26 @@ function extractPromptsAndPurpose(cid, wsPath, mtime, bdir, walkthroughPath, pla
         lastPrompt = "[Voice / Audio Conversation]";
     }
 
+    function isValidTitle(t) {
+        if (!t) return false;
+        const stripped = t.replace(/[^a-zA-Z0-9]/g, '').trim();
+        return stripped.length >= 3;
+    }
+
     // Determine targeted purpose title
     let autoTitle = "";
-    if (walkthroughTitle) {
+    if (walkthroughTitle && isValidTitle(walkthroughTitle)) {
         autoTitle = walkthroughTitle;
-    } else if (planTitle) {
+    } else if (planTitle && isValidTitle(planTitle)) {
         autoTitle = planTitle;
-    } else if (taskTitle) {
+    } else if (taskTitle && isValidTitle(taskTitle)) {
         autoTitle = taskTitle;
-    } else if (detectedObjective) {
-        autoTitle = detectedObjective.length > 80 ? detectedObjective.substring(0, 77) + '...' : detectedObjective;
-    } else if (firstPrompt && firstPrompt !== "[Voice / Audio Conversation]") {
+    } else if (firstPrompt && firstPrompt !== "[Voice / Audio Conversation]" && isValidTitle(firstPrompt)) {
         autoTitle = firstPrompt.length > 80 ? firstPrompt.substring(0, 77) + '...' : firstPrompt;
-    } else if (plannerFirstHeading) {
+    } else if (plannerFirstHeading && isValidTitle(plannerFirstHeading)) {
         autoTitle = plannerFirstHeading;
+    } else if (detectedObjective && isValidTitle(detectedObjective)) {
+        autoTitle = detectedObjective.length > 80 ? detectedObjective.substring(0, 77) + '...' : detectedObjective;
     } else {
         const dirName = extractDirectoryName(wsPath);
         const date = new Date(mtime * 1000);
@@ -481,6 +487,10 @@ class ConversationManager {
             db.close();
             return true;
         } catch (e) {
+            if (e.code === 'ERR_SQLITE_ERROR' && (e.errcode === 5 || (e.message && e.message.includes('locked')))) {
+                // state.vscdb is locked by currently active IDE window
+                return false;
+            }
             console.error('Error writing trajectorySummaries to state.vscdb:', e);
             return false;
         }

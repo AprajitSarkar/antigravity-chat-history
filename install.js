@@ -4,16 +4,27 @@ const { ConversationManager } = require('./src/conversationManager');
 
 const USER_PROFILE = process.env.USERPROFILE || 'C:\\Users\\Aprajit';
 const EXTENSIONS_DIR = path.join(USER_PROFILE, '.antigravity-ide', 'extensions');
-const TARGET_DIR = path.join(EXTENSIONS_DIR, 'antigravity-community.antigravity-chat-history-1.0.0-universal');
+const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
+const version = pkg.version || '1.1.0';
+const TARGET_DIR = path.join(EXTENSIONS_DIR, `antigravity-community.antigravity-chat-history-${version}-universal`);
 const EXT_JSON_PATH = path.join(EXTENSIONS_DIR, 'extensions.json');
 
 console.log('====================================================');
-console.log(' Installing Antigravity Chat History Extension');
+console.log(` Installing Antigravity Chat History Extension v${version}`);
 console.log('====================================================');
 
-// 1. Ensure target directory
-if (fs.existsSync(TARGET_DIR)) {
-    fs.rmSync(TARGET_DIR, { recursive: true, force: true });
+// 1. Clean up any existing installations
+if (fs.existsSync(EXTENSIONS_DIR)) {
+    const existing = fs.readdirSync(EXTENSIONS_DIR);
+    for (const item of existing) {
+        if (item.startsWith('antigravity-community.antigravity-chat-history')) {
+            const oldPath = path.join(EXTENSIONS_DIR, item);
+            try {
+                fs.rmSync(oldPath, { recursive: true, force: true });
+                console.log(`[-] Removed previous version: ${item}`);
+            } catch (e) {}
+        }
+    }
 }
 fs.mkdirSync(TARGET_DIR, { recursive: true });
 
@@ -54,7 +65,7 @@ list = list.filter(item => item.identifier?.id !== extId);
 
 const newEntry = {
     identifier: { id: extId },
-    version: '1.0.0',
+    version: version,
     location: {
         $mid: 1,
         fsPath: TARGET_DIR.toLowerCase(),
@@ -63,14 +74,14 @@ const newEntry = {
         path: '/' + TARGET_DIR.replace(/\\/g, '/'),
         scheme: 'file'
     },
-    relativeLocation: 'antigravity-community.antigravity-chat-history-1.0.0-universal',
+    relativeLocation: `antigravity-community.antigravity-chat-history-${version}-universal`,
     metadata: {
         installedTimestamp: Date.now(),
         pinned: true,
         source: 'local',
         publisherDisplayName: 'Antigravity Community',
         targetPlatform: 'universal',
-        updated: false,
+        updated: true,
         isApplicationScoped: false,
         isMachineScoped: false,
         isBuiltin: false

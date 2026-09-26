@@ -41,6 +41,9 @@ class ChatHistoryViewProvider {
                 case 'renameConversation':
                     await this.handleRenameConversation(data.cid, data.newTitle);
                     break;
+                case 'renameConversationPrompt':
+                    await this.handleRenameConversationPrompt(data.cid);
+                    break;
                 case 'deleteConversation':
                     await this.handleDeleteConversation(data.cid, data.title);
                     break;
@@ -224,6 +227,20 @@ class ChatHistoryViewProvider {
         if (!cid) return;
         this._manager.setCustomTitle(cid, newTitle);
         this.sendConversations();
+    }
+
+    async handleRenameConversationPrompt(cid) {
+        if (!cid) return;
+        const conv = this._manager.getConversations().find(c => c.cid === cid);
+        const input = await vscode.window.showInputBox({
+            prompt: 'Rename chat title (leave blank to restore auto-generated title)',
+            value: conv?.title || '',
+            ignoreFocusOut: true
+        });
+        if (input !== undefined) {
+            this._manager.setCustomTitle(cid, input);
+            this.sendConversations();
+        }
     }
 
     async handleOpenLogs(cid) {
