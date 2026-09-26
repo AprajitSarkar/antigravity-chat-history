@@ -67,8 +67,40 @@ function extractDirectoryName(wsPath) {
     }
 }
 
-function extractRealTitle(cid, wsPath, mtime, bdir, walkthroughPath, planPath) {
+const CUSTOM_TITLES_FILE = path.join(USER_PROFILE, '.gemini\\antigravity-ide\\custom_titles.json');
+
+function loadCustomTitles() {
+    try {
+        if (fs.existsSync(CUSTOM_TITLES_FILE)) {
+            return JSON.parse(fs.readFileSync(CUSTOM_TITLES_FILE, 'utf8'));
+        }
+    } catch (e) {
+        console.error('Error loading custom titles:', e);
+    }
+    return {};
+}
+
+function saveCustomTitles(titles) {
+    try {
+        const dir = path.dirname(CUSTOM_TITLES_FILE);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(CUSTOM_TITLES_FILE, JSON.stringify(titles, null, 2), 'utf8');
+        return true;
+    } catch (e) {
+        console.error('Error saving custom titles:', e);
+        return false;
+    }
+}
+
+function extractPromptsAndPurpose(cid, wsPath, mtime, bdir, walkthroughPath, planPath) {
+    let firstPrompt = "";
+    let lastPrompt = "";
+    const userPrompts = [];
+    let detectedObjective = "";
+    let plannerFirstHeading = "";
+
     // 1. Walkthrough.md
+    let walkthroughTitle = "";
     if (fs.existsSync(walkthroughPath)) {
         try {
             const lines = fs.readFileSync(walkthroughPath, 'utf8').split('\n');
@@ -76,13 +108,17 @@ function extractRealTitle(cid, wsPath, mtime, bdir, walkthroughPath, planPath) {
                 const trimmed = l.trim();
                 if (trimmed.startsWith('# ')) {
                     const t = trimmed.substring(2).trim();
-                    if (t && !/^walkthrough/i.test(t)) return t;
+                    if (t && !/^walkthrough/i.test(t)) {
+                        walkthroughTitle = t;
+                        break;
+                    }
                 }
             }
         } catch {}
     }
 
     // 2. Implementation plan.md
+    let planTitle = "";
     if (fs.existsSync(planPath)) {
         try {
             const lines = fs.readFileSync(planPath, 'utf8').split('\n');
@@ -90,13 +126,17 @@ function extractRealTitle(cid, wsPath, mtime, bdir, walkthroughPath, planPath) {
                 const trimmed = l.trim();
                 if (trimmed.startsWith('# ')) {
                     const t = trimmed.substring(2).trim();
-                    if (t && !/^implementation plan/i.test(t)) return t;
+                    if (t && !/^implementation plan/i.test(t)) {
+                        planTitle = t;
+                        break;
+                    }
                 }
             }
         } catch {}
     }
 
     // 3. Task.md
+    let taskTitle = "";
     const taskPath = path.join(bdir, 'task.md');
     if (fs.existsSync(taskPath)) {
         try {
@@ -105,7 +145,10 @@ function extractRealTitle(cid, wsPath, mtime, bdir, walkthroughPath, planPath) {
                 const trimmed = l.trim();
                 if (trimmed.startsWith('# ')) {
                     const t = trimmed.substring(2).trim();
-                    if (t && !/^task/i.test(t)) return t;
+                    if (t && !/^task/i.test(t)) {
+                        taskTitle = t;
+                        break;
+                    }
                 }
             }
         } catch {}
@@ -121,43 +164,43 @@ function extractRealTitle(cid, wsPath, mtime, bdir, walkthroughPath, planPath) {
             const content = fs.readFileSync(logFile, 'utf8');
             const lines = content.split('\n');
 
-            // Look for non-empty USER_INPUT first
             for (const l of lines) {
                 if (l.includes('"type":"USER_INPUT"')) {
                     try {
                         const obj = JSON.parse(l);
-                        const c = cleanText(obj.content || '');
+                        let raw = obj.content || '';
+                        const match = raw.match(/<USER_REQUEST>([\s\S]*?)<\/USER_REQUEST>/);
+                        if (match) raw = match[1];
+                        const c = cleanText(raw);
                         const isOnlyFilePaths = /^([a-zA-Z]:\\[^\s]+\s*)+$/i.test(c) || /^[a-zA-Z]:\\[a-zA-Z0-9_\\\-.]+/i.test(c);
-                        if (c && c.length > 2 && !c.startsWith('http') && !isOnlyFilePaths) {
-                            return c.length > 80 ? c.substring(0, 77) + '...' : c;
+                        if (c && c.length > 1 && !c.startsWith('http') && !isOnlyFilePaths) {
+                            userPrompts.push(c);
                         } else if (c && c.startsWith('http')) {
                             const repoName = c.split('/').pop().replace('.git', '');
-                            if (repoName) return `Project: ${repoName}`;
+                            if (repoName) userPrompts.push(`Project: ${repoName}`);
                         }
                     } catch {}
-                }
-            }
-
-            // If user input was empty/audio, check PLANNER_RESPONSE for key summary heading or title
-            for (const l of lines) {
-                if (l.includes('"type":"PLANNER_RESPONSE"')) {
+                } else if (l.includes('"type":"PLANNER_RESPONSE"')) {
                     try {
                         const obj = JSON.parse(l);
                         const text = obj.content || '';
-                        const hMatch = text.match(/###\s+([^\n\r]+)/) || text.match(/##\s+([^\n\r]+)/);
-                        if (hMatch && hMatch[1]) {
-                            const heading = hMatch[1].replace(/[*#]/g, '').trim();
-                            if (heading.length > 5 && heading.length < 85) {
-                                return heading;
+                        if (!detectedObjective) {
+                            const objMatch = text.match(/###\s*(?:USER\s+)?Objective:\s*([^\r\n]+)/i) ||
+                                             text.match(/\*\*(?:User\s+)?Objective\*\*:\s*([^\r\n]+)/i) ||
+                                             text.match(/###\s*Goal:\s*([^\r\n]+)/i) ||
+                                             text.match(/###\s*1\.\s*Task Overview[\s\S]*?[-*]\s+\*\*User Request\*\*:\s*([^\r\n]+)/i);
+                            if (objMatch && objMatch[1]) {
+                                detectedObjective = cleanText(objMatch[1]);
                             }
                         }
-                        const bMatch = text.match(/\*\*([A-Za-z0-9\s\-_:]{8,60})\*\*/);
-                        if (bMatch && bMatch[1]) {
-                            return bMatch[1].trim();
-                        }
-                        const firstSentence = text.split('\n')[0].replace(/[*#]/g, '').trim();
-                        if (firstSentence.length > 8 && firstSentence.length < 85) {
-                            return firstSentence;
+                        if (!plannerFirstHeading) {
+                            const hMatch = text.match(/###\s+([^\n\r]+)/) || text.match(/##\s+([^\n\r]+)/);
+                            if (hMatch && hMatch[1]) {
+                                const heading = hMatch[1].replace(/[*#]/g, '').trim();
+                                if (heading.length > 5 && heading.length < 85) {
+                                    plannerFirstHeading = heading;
+                                }
+                            }
                         }
                     } catch {}
                 }
@@ -165,10 +208,39 @@ function extractRealTitle(cid, wsPath, mtime, bdir, walkthroughPath, planPath) {
         } catch {}
     }
 
-    // Fallback: directory name + date
-    const dirName = extractDirectoryName(wsPath);
-    const date = new Date(mtime * 1000);
-    return `${dirName} Chat (${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})`;
+    if (userPrompts.length > 0) {
+        firstPrompt = userPrompts[0];
+        lastPrompt = userPrompts[userPrompts.length - 1];
+    } else {
+        firstPrompt = "[Voice / Audio Conversation]";
+        lastPrompt = "[Voice / Audio Conversation]";
+    }
+
+    // Determine targeted purpose title
+    let autoTitle = "";
+    if (walkthroughTitle) {
+        autoTitle = walkthroughTitle;
+    } else if (planTitle) {
+        autoTitle = planTitle;
+    } else if (taskTitle) {
+        autoTitle = taskTitle;
+    } else if (detectedObjective) {
+        autoTitle = detectedObjective.length > 80 ? detectedObjective.substring(0, 77) + '...' : detectedObjective;
+    } else if (firstPrompt && firstPrompt !== "[Voice / Audio Conversation]") {
+        autoTitle = firstPrompt.length > 80 ? firstPrompt.substring(0, 77) + '...' : firstPrompt;
+    } else if (plannerFirstHeading) {
+        autoTitle = plannerFirstHeading;
+    } else {
+        const dirName = extractDirectoryName(wsPath);
+        const date = new Date(mtime * 1000);
+        autoTitle = `${dirName} Chat (${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})`;
+    }
+
+    return {
+        autoTitle,
+        firstPrompt,
+        lastPrompt
+    };
 }
 
 function getConversationData(cid) {
@@ -221,13 +293,20 @@ function getConversationData(cid) {
     const walkthroughPath = path.join(bdir, 'walkthrough.md');
     const planPath = path.join(bdir, 'implementation_plan.md');
 
-    const title = extractRealTitle(cid, wsPath, mtime, bdir, walkthroughPath, planPath);
+    const { autoTitle, firstPrompt, lastPrompt } = extractPromptsAndPurpose(cid, wsPath, mtime, bdir, walkthroughPath, planPath);
+    const customTitles = loadCustomTitles();
+    const isCustomTitle = !!customTitles[cid];
+    const title = isCustomTitle ? customTitles[cid] : autoTitle;
 
     const timestampMs = Math.round(mtime * 1000);
     return {
         cid,
         trajId,
         title,
+        autoTitle,
+        isCustomTitle,
+        firstPrompt,
+        lastPrompt,
         stepCount,
         mtime,
         timestampMs,
@@ -245,6 +324,26 @@ function getConversationData(cid) {
 }
 
 class ConversationManager {
+    setCustomTitle(cid, newTitle) {
+        const titles = loadCustomTitles();
+        const trimmed = (newTitle || '').trim();
+        if (!trimmed) {
+            delete titles[cid];
+        } else {
+            titles[cid] = trimmed;
+        }
+        saveCustomTitles(titles);
+
+        const cached = this.cache.get(cid);
+        if (cached) {
+            cached.title = titles[cid] || cached.autoTitle || cached.title;
+            cached.isCustomTitle = !!titles[cid];
+        }
+
+        this.notifyListeners();
+        this.syncToVscdb();
+        return true;
+    }
     constructor() {
         this.cache = new Map();
         this.watcher = null;
@@ -420,5 +519,8 @@ module.exports = {
     formatRelativeTime,
     formatFullDate,
     extractDirectoryName,
-    extractRealTitle
+    extractPromptsAndPurpose,
+    extractRealTitle: (cid, wsPath, mtime, bdir, w, p) => extractPromptsAndPurpose(cid, wsPath, mtime, bdir, w, p).autoTitle,
+    loadCustomTitles,
+    saveCustomTitles
 };

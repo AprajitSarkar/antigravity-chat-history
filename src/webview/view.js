@@ -11,6 +11,8 @@
   let searchQuery = '';
   let expandedDirs = new Set(savedState.expandedDirs || []);
   let activeContextMenuCid = null;
+  let editingCid = null;
+  let hoverTimer = null;
 
   // DOM Elements
   const convContainer = document.getElementById('convContainer');
@@ -22,6 +24,13 @@
   const syncBtn = document.getElementById('syncBtn');
   const showingCountText = document.getElementById('showingCountText');
   const contextMenu = document.getElementById('contextMenu');
+
+  // Hover Tooltip Elements
+  const hoverTooltip = document.getElementById('hoverTooltip');
+  const tooltipTitle = document.getElementById('tooltipTitle');
+  const tooltipLastPrompt = document.getElementById('tooltipLastPrompt');
+  const tooltipWs = document.getElementById('tooltipWs');
+  const tooltipDate = document.getElementById('tooltipDate');
 
   // View Mode Tabs
   const tabAll = document.getElementById('tabAll');
@@ -186,6 +195,18 @@
     }
   });
 
+  document.getElementById('menuRename').addEventListener('click', (e) => {
+    e.stopPropagation();
+    contextMenu.style.display = 'none';
+    if (activeContextMenuCid) {
+      const card = convContainer.querySelector(`.conv-card[data-cid="${activeContextMenuCid}"]`);
+      const conv = allConversations.find(c => c.cid === activeContextMenuCid);
+      if (card && conv) {
+        startInlineEdit(card, conv);
+      }
+    }
+  });
+
   document.getElementById('menuOpenLogs').addEventListener('click', (e) => {
     e.stopPropagation();
     contextMenu.style.display = 'none';
@@ -211,6 +232,54 @@
     }
   });
 
+  // Tooltip functions
+  function showHoverTooltip(conv, rect) {
+    if (editingCid === conv.cid) return;
+    if (!hoverTooltip) return;
+
+    tooltipTitle.textContent = conv.title || 'Untitled Chat';
+    tooltipLastPrompt.textContent = conv.lastPrompt || conv.firstPrompt || '[No prompt recorded]';
+    tooltipWs.textContent = conv.wsName || 'Global';
+    tooltipDate.textContent = conv.dateStr || '';
+
+    hoverTooltip.classList.add('visible');
+
+    const ttWidth = hoverTooltip.offsetWidth || 300;
+    const ttHeight = hoverTooltip.offsetHeight || 140;
+
+    let left = rect.right + 12;
+    let top = rect.top;
+
+    if (left + ttWidth > window.innerWidth - 10) {
+      left = Math.max(10, rect.left - ttWidth - 12);
+      if (left < 10) {
+        left = Math.max(10, Math.min(rect.left, window.innerWidth - ttWidth - 10));
+        top = rect.bottom + 8;
+      }
+    }
+
+    if (top + ttHeight > window.innerHeight - 10) {
+      top = Math.max(10, window.innerHeight - ttHeight - 10);
+    }
+
+    hoverTooltip.style.left = `${left}px`;
+    hoverTooltip.style.top = `${top}px`;
+  }
+
+  function hideHoverTooltip() {
+    if (hoverTimer) {
+      clearTimeout(hoverTimer);
+      hoverTimer = null;
+    }
+    if (hoverTooltip) {
+      hoverTooltip.classList.remove('visible');
+    }
+  }
+
+  convContainer.addEventListener('scroll', () => {
+    hideHoverTooltip();
+  });
+
   function isSameWorkspace(convWs, currentWs) {
     if (!convWs || !currentWs) return false;
     const norm = (s) => s.replace(/\\/g, '/').replace(/\/$/, '').toLowerCase();
@@ -227,7 +296,8 @@
       // 1. Text Search Filter
       if (searchQuery) {
         const titleMatch = (item.title || '').toLowerCase().includes(searchQuery);
-        const promptMatch = (item.firstPrompt || '').toLowerCase().includes(searchQuery);
+        const promptMatch = (item.lastPrompt || '').toLowerCase().includes(searchQuery) ||
+                            (item.firstPrompt || '').toLowerCase().includes(searchQuery);
         const folderMatch = (item.wsName || '').toLowerCase().includes(searchQuery) || (item.wsPath || '').toLowerCase().includes(searchQuery);
         const idMatch = (item.cid || '').toLowerCase().includes(searchQuery);
         if (!titleMatch && !promptMatch && !folderMatch && !idMatch) {
@@ -268,6 +338,7 @@
   }
 
   function render() {
+    hideHoverTooltip();
     totalBadge.textContent = allConversations.length;
     dirCountPill.textContent = getUniqueDirectoryCount();
 
@@ -306,7 +377,6 @@
   }
 
   function renderByDirectory(conversations) {
-    // Group conversations by directory
     const groups = new Map();
     conversations.forEach(conv => {
       const dirKey = conv.wsPath || 'global';
@@ -322,7 +392,6 @@
       groups.get(dirKey).items.push(conv);
     });
 
-    // Sort directory groups: active workspace first, then by count / latest
     const groupList = Array.from(groups.values());
     groupList.sort((a, b) => {
       if (a.isCurrent && !b.isCurrent) return -1;
@@ -362,7 +431,6 @@
         <div class="dir-content"></div>
       `;
 
-      // Directory Header Click: Expand / Collapse
       const headerEl = groupEl.querySelector('.dir-header');
       const contentEl = groupEl.querySelector('.dir-content');
 
@@ -378,7 +446,6 @@
         saveState();
       });
 
-      // Populate chats inside directory
       group.items.forEach(conv => {
         const card = createConversationCard(conv, false);
         contentEl.appendChild(card);
@@ -390,17 +457,87 @@
     convContainer.appendChild(fragment);
   }
 
+  function startInlineEdit(card, conv) {
+    hideHoverTooltip();
+    editingCid = conv.cid;
+    const titleGroup = card.querySelector('.card-title-group');
+    if (!titleGroup) return;
+
+    titleGroup.innerHTML = `
+      <div class="title-edit-container">
+        <input type="text" class="title-edit-input" value="${escapeHtml(conv.title)}" placeholder="Enter custom title..." />
+        <button class="title-edit-btn save" title="Save Title (Enter)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </button>
+        <button class="title-edit-btn cancel" title="Cancel (Esc)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+    `;
+
+    const input = titleGroup.querySelector('.title-edit-input');
+    const saveBtn = titleGroup.querySelector('.title-edit-btn.save');
+    const cancelBtn = titleGroup.querySelector('.title-edit-btn.cancel');
+
+    input.focus();
+    input.select();
+
+    const doSave = () => {
+      const newTitle = input.value.trim();
+      editingCid = null;
+      vscode.postMessage({
+        command: 'renameConversation',
+        cid: conv.cid,
+        newTitle: newTitle
+      });
+      conv.title = newTitle || conv.autoTitle || conv.title;
+      conv.isCustomTitle = !!newTitle;
+      render();
+    };
+
+    const doCancel = () => {
+      editingCid = null;
+      render();
+    };
+
+    saveBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      doSave();
+    });
+
+    cancelBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      doCancel();
+    });
+
+    input.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') {
+        doSave();
+      } else if (e.key === 'Escape') {
+        doCancel();
+      }
+    });
+
+    input.addEventListener('click', (e) => e.stopPropagation());
+  }
+
   function createConversationCard(conv, showDirectory) {
     const isCurrent = isSameWorkspace(conv.wsPath, currentWsUri);
     const card = document.createElement('div');
     card.className = `conv-card ${isCurrent ? 'active-workspace' : ''}`;
     card.dataset.cid = conv.cid;
 
+    // Build accessible title attribute for fallback
+    const tooltipText = `Title: ${conv.title}\nLast Prompt: ${conv.lastPrompt || conv.firstPrompt || '[None]'}\nDirectory: ${conv.wsName}\nTime: ${conv.dateStr}`;
+    card.title = tooltipText;
+
     card.innerHTML = `
       <div class="card-top">
         <div class="card-title-group">
-          <div class="card-title" title="${escapeHtml(conv.title)}">
-            <span>${escapeHtml(conv.title)}</span>
+          <div class="card-title">
+            <span class="title-text">${escapeHtml(conv.title)}</span>
+            ${conv.isCustomTitle ? '<span class="custom-title-badge" title="Manually edited title">Edited</span>' : ''}
             ${isCurrent ? '<span class="current-ws-badge" title="Created in current open workspace">Current</span>' : ''}
           </div>
         </div>
@@ -429,6 +566,12 @@
         </div>
 
         <div class="card-actions">
+          <button class="card-btn" title="Rename Title (Double click title also works)" data-action="rename">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+          </button>
           <button class="card-btn delete-btn" title="Delete Conversation" data-action="delete">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="3 6 5 6 21 6"></polyline>
@@ -448,7 +591,7 @@
 
     // Click card to open conversation
     card.addEventListener('click', (e) => {
-      if (e.target.closest('[data-action]')) return;
+      if (e.target.closest('[data-action]') || e.target.closest('.title-edit-container')) return;
       vscode.postMessage({
         command: 'openConversation',
         cid: conv.cid,
@@ -457,18 +600,51 @@
       });
     });
 
+    // Double-click title to inline edit
+    const titleEl = card.querySelector('.card-title');
+    if (titleEl) {
+      titleEl.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        startInlineEdit(card, conv);
+      });
+    }
+
+    // Hover tooltip events
+    card.addEventListener('mouseenter', () => {
+      if (hoverTimer) clearTimeout(hoverTimer);
+      hoverTimer = setTimeout(() => {
+        const rect = card.getBoundingClientRect();
+        showHoverTooltip(conv, rect);
+      }, 200);
+    });
+
+    card.addEventListener('mouseleave', () => {
+      hideHoverTooltip();
+    });
+
     // Right click context menu
     card.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       e.stopPropagation();
+      hideHoverTooltip();
       openContextMenu(e.clientX, e.clientY, conv.cid);
     });
 
-    // Actions inside card
+    // Rename button action
+    const renameBtn = card.querySelector('[data-action="rename"]');
+    if (renameBtn) {
+      renameBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        startInlineEdit(card, conv);
+      });
+    }
+
+    // Delete button action
     const delBtn = card.querySelector('[data-action="delete"]');
     if (delBtn) {
       delBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        hideHoverTooltip();
         vscode.postMessage({
           command: 'deleteConversation',
           cid: conv.cid,
@@ -477,10 +653,12 @@
       });
     }
 
+    // More menu button action
     const menuBtn = card.querySelector('[data-action="menu"]');
     if (menuBtn) {
       menuBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        hideHoverTooltip();
         const rect = menuBtn.getBoundingClientRect();
         openContextMenu(rect.left - 120, rect.bottom + 4, conv.cid);
       });
@@ -493,7 +671,7 @@
     activeContextMenuCid = cid;
     contextMenu.style.display = 'flex';
     const menuWidth = 190;
-    const menuHeight = 170;
+    const menuHeight = 200;
     const maxX = window.innerWidth - menuWidth - 8;
     const maxY = window.innerHeight - menuHeight - 8;
     contextMenu.style.left = `${Math.min(x, maxX)}px`;

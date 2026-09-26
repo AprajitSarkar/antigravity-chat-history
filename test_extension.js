@@ -53,6 +53,33 @@ if (!syncOk) {
     console.error('FAIL: syncToVscdb failed!');
     process.exit(1);
 }
-console.log('PASS: Synced to state.vscdb!');
+console.log('\n=== TEST 5: Verify Last Prompt & Title Renaming ===');
+const first = convs[0];
+console.log(`First conversation CID: ${first.cid}`);
+console.log(`Original Title: "${first.title}"`);
+console.log(`Last Prompt Preview: "${(first.lastPrompt || '').substring(0, 60)}..."`);
+if (first.lastPrompt === undefined) {
+    console.error('FAIL: lastPrompt property is undefined!');
+    process.exit(1);
+}
+
+// Test renaming
+const originalTitle = first.title;
+mgr.setCustomTitle(first.cid, 'Renamed Title Test');
+const afterRename = mgr.getConversations().find(c => c.cid === first.cid);
+if (afterRename.title !== 'Renamed Title Test' || !afterRename.isCustomTitle) {
+    console.error('FAIL: Renaming did not apply properly!');
+    process.exit(1);
+}
+console.log('PASS: Successfully renamed title!');
+
+// Reset back to original
+mgr.setCustomTitle(first.cid, '');
+const afterReset = mgr.getConversations().find(c => c.cid === first.cid);
+if (afterReset.title !== originalTitle) {
+    console.error('FAIL: Resetting title did not restore original auto title!');
+    process.exit(1);
+}
+console.log('PASS: Successfully reset custom title!');
 
 console.log('\n=== ALL TESTS PASSED! ===');

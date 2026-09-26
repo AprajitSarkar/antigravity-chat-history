@@ -38,6 +38,9 @@ class ChatHistoryViewProvider {
                 case 'openConversationWorkspace':
                     await this.openInWorkspace(data.cid, data.wsPath);
                     break;
+                case 'renameConversation':
+                    await this.handleRenameConversation(data.cid, data.newTitle);
+                    break;
                 case 'deleteConversation':
                     await this.handleDeleteConversation(data.cid, data.title);
                     break;
@@ -217,6 +220,12 @@ class ChatHistoryViewProvider {
         }
     }
 
+    async handleRenameConversation(cid, newTitle) {
+        if (!cid) return;
+        this._manager.setCustomTitle(cid, newTitle);
+        this.sendConversations();
+    }
+
     async handleOpenLogs(cid) {
         const conv = this._manager.getConversations().find(c => c.cid === cid);
         if (conv && conv.transcriptPath && fs.existsSync(conv.transcriptPath)) {
@@ -282,6 +291,23 @@ function activate(context) {
         vscode.commands.registerCommand('antigravity-chat-history.deleteChat', (item) => {
             if (item && item.cid) {
                 provider.handleDeleteConversation(item.cid, item.title);
+            }
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('antigravity-chat-history.renameChat', async (item) => {
+            const cid = item?.cid;
+            if (!cid) return;
+            const conv = manager.getConversations().find(c => c.cid === cid);
+            const input = await vscode.window.showInputBox({
+                prompt: 'Enter custom title for this chat (leave blank to restore auto title)',
+                value: conv?.title || '',
+                ignoreFocusOut: true
+            });
+            if (input !== undefined) {
+                manager.setCustomTitle(cid, input);
+                provider.sendConversations();
             }
         })
     );

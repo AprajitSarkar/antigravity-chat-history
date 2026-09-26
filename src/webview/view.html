@@ -112,6 +112,13 @@
       </svg>
       Open in Workspace Folder
     </button>
+    <button class="menu-item" id="menuRename">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+      </svg>
+      Rename Title
+    </button>
     <div class="menu-divider"></div>
     <button class="menu-item" id="menuOpenLogs">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -137,6 +144,32 @@
       </svg>
       Delete Conversation
     </button>
+  </div>
+
+  <!-- Hover Preview Tooltip -->
+  <div class="hover-preview-tooltip" id="hoverTooltip">
+    <div class="tooltip-header">
+      <svg class="tooltip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+      </svg>
+      <span class="tooltip-title" id="tooltipTitle">Title</span>
+    </div>
+    <div class="tooltip-body">
+      <div class="tooltip-section">
+        <div class="tooltip-label">LAST PROMPT / MESSAGE:</div>
+        <div class="tooltip-prompt" id="tooltipLastPrompt">...</div>
+      </div>
+      <div class="tooltip-meta-grid">
+        <div class="tooltip-meta-item">
+          <span class="tooltip-sublabel">DIRECTORY:</span>
+          <span class="tooltip-val" id="tooltipWs">...</span>
+        </div>
+        <div class="tooltip-meta-item">
+          <span class="tooltip-sublabel">TIME:</span>
+          <span class="tooltip-val" id="tooltipDate">...</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="{{JS_URI}}"></script>

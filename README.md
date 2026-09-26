@@ -40,26 +40,39 @@ Because it reads your persisted local databases directly and maintains live back
 - **Date Filter Chips**: Filter sessions by *All Time*, *Today*, *7 Days*, or *30 Days*.
 - **State Persistence**: Your view mode, sort order, and expanded folders are automatically saved in IDE state and restored whenever you open the IDE.
 
-### 3. 🎯 Real Title Extraction (No Truncated Paths or Fallbacks)
-- Accurately parses plans (`implementation_plan.md`), walkthroughs (`walkthrough.md`), tasks (`task.md`), and cleaned prompt transcripts.
-- Automatically cleans away internal IDE file path prefixes and metadata tags so you see actual, human-readable session titles.
+### 3. 🎯 Targeted Purpose Titles & Inline Editing
+- **Automatic Purpose Extraction**: Accurately targets the purpose of each chat by analyzing session objectives, `implementation_plan.md`, `walkthrough.md`, `task.md`, and clean user prompt intent.
+- **✏️ Editable Titles**:
+  - Click the **pencil icon** (`✏️`) on any conversation card or **double-click** the title to rename it inline.
+  - Or right-click and select **Rename Title**.
+  - Press <kbd>Enter</kbd> to save or <kbd>Esc</kbd> to cancel.
+  - Custom titles are saved in `~/.gemini/antigravity-ide/custom_titles.json` and persist permanently across laptop reboots and IDE updates.
+  - Clearing the input and saving instantly restores the automatically extracted purpose title.
 
-### 4. ⚡ Seamless Click-to-Open (Identical to Native IDE Flow)
+### 4. 💬 Rich Hover Preview (Full Title & Last Prompt)
+- Hover your mouse over any conversation card to open a glassmorphic preview tooltip showing:
+  - **Title**: The unabridged chat title.
+  - **Last Message / Prompt**: The exact last prompt you sent in that conversation.
+  - **Directory**: The workspace location.
+  - **Date & Time**: Exact creation/activity timestamp.
+
+### 5. ⚡ Seamless Click-to-Open (Identical to Native IDE Flow)
 - **Same Workspace**: Clicking opens/focuses the right-hand chat panel immediately.
 - **Different Workspace**: Prompts you with standard IDE options:
   - *Open in current window* (Continue conversation in active workspace)
   - *Open in workspace folder* (Open original folder in a new window)
 
-### 5. 🗑️ Inline Deletion & Context Menu
+### 6. 🗑️ Inline Deletion & Context Menu
 - Delete button (`🗑`) with modal confirmation dialog to safely remove obsolete chats and delete associated SQLite database files.
 - Right-click context menu:
   - **Open in Current Window**
   - **Open in Workspace Folder**
+  - **Rename Title**
   - **View Full Transcript Logs (`.jsonl`)**
   - **Copy Conversation ID**
   - **Delete Conversation**
 
-### 6. 🔄 Live Sync & Native State Synchronization
+### 7. 🔄 Live Sync & Native State Synchronization
 - Automatically monitors disk changes via `fs.watch` and polls every 5 seconds. Chats created seconds ago appear immediately without manual refresh.
 - Encodes protobuf summaries directly into Antigravity IDE's internal `state.vscdb` (`antigravityUnifiedStateSync.trajectorySummaries`), ensuring native pickers remain populated.
 
