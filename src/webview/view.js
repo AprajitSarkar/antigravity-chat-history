@@ -313,12 +313,14 @@
       return true;
     });
 
-    // 3. Sorting
+    // 3. Sorting (LRU - most recently updated always first)
     items.sort((a, b) => {
+      const timeA = a.timestampMs || (a.mtime * 1000) || 0;
+      const timeB = b.timestampMs || (b.mtime * 1000) || 0;
       if (sortOrder === 'newest') {
-        return b.mtime - a.mtime;
+        return timeB - timeA;
       } else {
-        return a.mtime - b.mtime;
+        return timeA - timeB;
       }
     });
 

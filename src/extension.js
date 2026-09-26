@@ -2,6 +2,7 @@ const vscode = require('vscode');
 const path = require('path');
 const fs = require('fs');
 const { ConversationManager } = require('./conversationManager');
+const { ensureWorkbenchPatched } = require('./patchWorkbench');
 
 class ChatHistoryViewProvider {
     constructor(extensionUri, conversationManager) {
@@ -178,7 +179,19 @@ class ChatHistoryViewProvider {
             this._manager.setWorkspaceCascade(currentWs, cid);
         }
 
-        // Focus chat panel on the right side
+        // 1. Trigger native Antigravity conversation switching
+        let switched = false;
+        try {
+            await vscode.commands.executeCommand("antigravity.loadConversation", cid);
+            switched = true;
+        } catch (e) {
+            try {
+                await vscode.commands.executeCommand("antigravity.openConversation", cid);
+                switched = true;
+            } catch (e2) {}
+        }
+
+        // 2. Open and focus the chat panel container
         try {
             await vscode.commands.executeCommand("workbench.view.extension.antigravity.agentViewContainerId");
         } catch {}
@@ -188,6 +201,17 @@ class ChatHistoryViewProvider {
         try {
             await vscode.commands.executeCommand("antigravity.agentSidePanel.focus");
         } catch {}
+
+        // 3. Fallback prompt if command is pending initial window reload
+        if (!switched) {
+            const action = await vscode.window.showInformationMessage(
+                'To activate instant one-click chat restoration, a quick window reload is required.',
+                'Reload Window'
+            );
+            if (action === 'Reload Window') {
+                await vscode.commands.executeCommand("workbench.action.reloadWindow");
+            }
+        }
     }
 
     async openInWorkspace(cid, wsPath) {
@@ -269,6 +293,13 @@ class ChatHistoryViewProvider {
 }
 
 function activate(context) {
+    // 1. Ensure Antigravity IDE workbench has native conversation loading enabled
+    try {
+        ensureWorkbenchPatched();
+    } catch (e) {
+        console.warn('[Antigravity Chat History] Workbench patch check:', e);
+    }
+
     const manager = new ConversationManager();
     manager.reload();
     manager.startWatching();

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { ConversationManager } = require('./src/conversationManager');
+const { ensureWorkbenchPatched } = require('./src/patchWorkbench');
 
 const USER_PROFILE = process.env.USERPROFILE || 'C:\\Users\\Aprajit';
 const EXTENSIONS_DIR = path.join(USER_PROFILE, '.antigravity-ide', 'extensions');
@@ -97,10 +98,17 @@ console.log('[*] Performing initial conversation scan and database sync...');
 const manager = new ConversationManager();
 const convs = manager.reload();
 const synced = manager.syncToVscdb();
-console.log(`[+] Synced ${convs.length} total conversations to Antigravity internal state (Result: ${synced}).`);
+// 5. Ensure Antigravity IDE workbench has direct conversation switching registered
+console.log('[*] Verifying Antigravity IDE workbench native chat integration...');
+const patchRes = ensureWorkbenchPatched();
+if (patchRes.success) {
+    console.log(`[+] Antigravity workbench verified (alreadyPatched: ${patchRes.alreadyPatched}).`);
+} else {
+    console.warn(`[!] Workbench integration note: ${patchRes.error}`);
+}
 
 console.log('====================================================');
 console.log(' SUCCESS: Extension successfully installed!');
 console.log(' Run "Developer: Reload Window" in Antigravity IDE');
-console.log(' to activate the Chat History icon on the left bar.');
+console.log(' to activate direct conversation restoration & left panel!');
 console.log('====================================================');

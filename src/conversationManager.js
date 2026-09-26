@@ -255,11 +255,22 @@ function getConversationData(cid) {
 
     let mtime = 0;
     let sizeBytes = 0;
+    let maxMtimeMs = 0;
     try {
         const stat = fs.statSync(dbPath);
-        mtime = stat.mtimeMs / 1000;
+        maxMtimeMs = stat.mtimeMs;
         sizeBytes = stat.size;
     } catch {}
+
+    const walPath = path.join(CONV_DIR, `${cid}.db-wal`);
+    if (fs.existsSync(walPath)) {
+        try {
+            const walStat = fs.statSync(walPath);
+            if (walStat.mtimeMs > maxMtimeMs) {
+                maxMtimeMs = walStat.mtimeMs;
+            }
+        } catch {}
+    }
 
     let trajId = cid;
     let stepCount = 0;
@@ -299,12 +310,31 @@ function getConversationData(cid) {
     const walkthroughPath = path.join(bdir, 'walkthrough.md');
     const planPath = path.join(bdir, 'implementation_plan.md');
 
+    if (fs.existsSync(tpath)) {
+        try {
+            const tStat = fs.statSync(tpath);
+            if (tStat.mtimeMs > maxMtimeMs) {
+                maxMtimeMs = tStat.mtimeMs;
+            }
+        } catch {}
+    }
+
+    if (fs.existsSync(fullTpath)) {
+        try {
+            const fullStat = fs.statSync(fullTpath);
+            if (fullStat.mtimeMs > maxMtimeMs) {
+                maxMtimeMs = fullStat.mtimeMs;
+            }
+        } catch {}
+    }
+
+    mtime = maxMtimeMs / 1000;
+    const timestampMs = Math.round(maxMtimeMs);
+
     const { autoTitle, firstPrompt, lastPrompt } = extractPromptsAndPurpose(cid, wsPath, mtime, bdir, walkthroughPath, planPath);
     const customTitles = loadCustomTitles();
     const isCustomTitle = !!customTitles[cid];
     const title = isCustomTitle ? customTitles[cid] : autoTitle;
-
-    const timestampMs = Math.round(mtime * 1000);
     return {
         cid,
         trajId,
@@ -353,6 +383,7 @@ class ConversationManager {
     constructor() {
         this.cache = new Map();
         this.watcher = null;
+        this.brainWatcher = null;
         this.listeners = new Set();
         this.debounceTimer = null;
         this.pollInterval = null;
@@ -370,32 +401,52 @@ class ConversationManager {
         }
     }
 
-    startWatching() {
-        if (!fs.existsSync(CONV_DIR)) return;
+    scheduleReload() {
+        if (this.debounceTimer) clearTimeout(this.debounceTimer);
+        this.debounceTimer = setTimeout(() => {
+            this.reload();
+        }, 300);
+    }
 
-        try {
-            this.watcher = fs.watch(CONV_DIR, (eventType, filename) => {
-                if (filename && filename.endsWith('.db')) {
-                    if (this.debounceTimer) clearTimeout(this.debounceTimer);
-                    this.debounceTimer = setTimeout(() => {
-                        this.reload();
-                    }, 400);
-                }
-            });
-        } catch (e) {
-            console.error('Error starting fs.watch:', e);
+    startWatching() {
+        if (fs.existsSync(CONV_DIR)) {
+            try {
+                this.watcher = fs.watch(CONV_DIR, (eventType, filename) => {
+                    if (filename && (filename.endsWith('.db') || filename.endsWith('.db-wal') || filename.endsWith('.db-shm'))) {
+                        this.scheduleReload();
+                    }
+                });
+            } catch (e) {
+                console.error('Error starting fs.watch on CONV_DIR:', e);
+            }
         }
 
-        // Secondary polling every 5 seconds to ensure 100% sync
+        if (fs.existsSync(BRAIN_DIR)) {
+            try {
+                this.brainWatcher = fs.watch(BRAIN_DIR, { recursive: true }, (eventType, filename) => {
+                    if (filename && (filename.includes('transcript') || filename.endsWith('.jsonl') || filename.endsWith('.md'))) {
+                        this.scheduleReload();
+                    }
+                });
+            } catch (e) {
+                console.error('Error starting fs.watch on BRAIN_DIR:', e);
+            }
+        }
+
+        // Secondary polling every 3 seconds to ensure real-time accuracy across active chats
         this.pollInterval = setInterval(() => {
             this.checkChanges();
-        }, 5000);
+        }, 3000);
     }
 
     stopWatching() {
         if (this.watcher) {
             try { this.watcher.close(); } catch {}
             this.watcher = null;
+        }
+        if (this.brainWatcher) {
+            try { this.brainWatcher.close(); } catch {}
+            this.brainWatcher = null;
         }
         if (this.pollInterval) {
             clearInterval(this.pollInterval);
@@ -411,12 +462,16 @@ class ConversationManager {
                 this.reload();
                 return;
             }
-            for (const f of files) {
-                const p = path.join(CONV_DIR, f);
-                const stat = fs.statSync(p);
-                const cid = f.replace('.db', '');
-                const cached = this.cache.get(cid);
-                if (!cached || Math.abs(cached.mtime - (stat.mtimeMs / 1000)) > 1) {
+            for (const conv of this.cache.values()) {
+                const dbP = path.join(CONV_DIR, `${conv.cid}.db`);
+                const walP = path.join(CONV_DIR, `${conv.cid}.db-wal`);
+                const trP = path.join(BRAIN_DIR, conv.cid, '.system_generated', 'logs', 'transcript.jsonl');
+                let latestMs = 0;
+                if (fs.existsSync(dbP)) latestMs = Math.max(latestMs, fs.statSync(dbP).mtimeMs);
+                if (fs.existsSync(walP)) latestMs = Math.max(latestMs, fs.statSync(walP).mtimeMs);
+                if (fs.existsSync(trP)) latestMs = Math.max(latestMs, fs.statSync(trP).mtimeMs);
+
+                if (Math.abs(latestMs - conv.timestampMs) > 1000) {
                     this.reload();
                     return;
                 }
@@ -448,7 +503,7 @@ class ConversationManager {
 
     getConversations() {
         const list = Array.from(this.cache.values());
-        list.sort((a, b) => b.mtime - a.mtime);
+        list.sort((a, b) => b.timestampMs - a.timestampMs);
         return list;
     }
 
