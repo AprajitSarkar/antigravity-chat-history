@@ -2,7 +2,6 @@ const vscode = require('vscode');
 const path = require('path');
 const fs = require('fs');
 const { ConversationManager } = require('./conversationManager');
-const { ensureWorkbenchPatched } = require('./patchWorkbench');
 
 class ChatHistoryViewProvider {
     constructor(extensionUri, conversationManager) {
@@ -34,7 +33,7 @@ class ChatHistoryViewProvider {
                     await this.handleOpenConversation(data.cid, data.wsPath, data.title);
                     break;
                 case 'openConversationCurrentWindow':
-                    await this.openInCurrentWindow(data.cid);
+                    await this.openInCurrentWindow(data.cid, data.title);
                     break;
                 case 'openConversationWorkspace':
                     await this.openInWorkspace(data.cid, data.wsPath);
@@ -115,7 +114,7 @@ class ChatHistoryViewProvider {
 
         // 1. If currently in the exact same workspace as the conversation:
         if (wsPath && currentWs && norm(wsPath) === norm(currentWs)) {
-            await this.openInCurrentWindow(cid);
+            await this.openInCurrentWindow(cid, title);
             return;
         }
 
@@ -129,7 +128,7 @@ class ChatHistoryViewProvider {
             });
 
             if (res && res.openInCurrentWindow) {
-                await this.openInCurrentWindow(cid);
+                await this.openInCurrentWindow(cid, title);
             }
         } catch (e) {
             // Fallback to custom QuickPick matching the exact same UX
@@ -166,32 +165,20 @@ class ChatHistoryViewProvider {
         if (!picked) return;
 
         if (picked.action === 'current') {
-            await this.openInCurrentWindow(cid);
+            await this.openInCurrentWindow(cid, title);
         } else if (picked.action === 'target' && picked.targetUri) {
             this._manager.setWorkspaceCascade(picked.targetUri.toString(), cid);
             await vscode.commands.executeCommand("vscode.openFolder", picked.targetUri, { forceNewWindow: true });
         }
     }
 
-    async openInCurrentWindow(cid) {
+    async openInCurrentWindow(cid, title) {
         const currentWs = this.getCurrentWorkspaceUri();
         if (currentWs) {
             this._manager.setWorkspaceCascade(currentWs, cid);
         }
 
-        // 1. Trigger native Antigravity conversation switching
-        let switched = false;
-        try {
-            await vscode.commands.executeCommand("antigravity.loadConversation", cid);
-            switched = true;
-        } catch (e) {
-            try {
-                await vscode.commands.executeCommand("antigravity.openConversation", cid);
-                switched = true;
-            } catch (e2) {}
-        }
-
-        // 2. Open and focus the chat panel container
+        // 1. Focus the chat panel container
         try {
             await vscode.commands.executeCommand("workbench.view.extension.antigravity.agentViewContainerId");
         } catch {}
@@ -202,15 +189,20 @@ class ChatHistoryViewProvider {
             await vscode.commands.executeCommand("antigravity.agentSidePanel.focus");
         } catch {}
 
-        // 3. Fallback prompt if command is pending initial window reload
-        if (!switched) {
-            const action = await vscode.window.showInformationMessage(
-                'To activate instant one-click chat restoration, a quick window reload is required.',
-                'Reload Window'
-            );
-            if (action === 'Reload Window') {
-                await vscode.commands.executeCommand("workbench.action.reloadWindow");
-            }
+        // 2. Offer instant reload to mount conversation or open native picker
+        const displayName = title ? `"${title}"` : cid;
+        const choice = await vscode.window.showInformationMessage(
+            `Restored chat ${displayName} for current workspace. Click Reload Window to switch view now.`,
+            'Reload Window',
+            'Open Chat Picker'
+        );
+
+        if (choice === 'Reload Window') {
+            await vscode.commands.executeCommand("workbench.action.reloadWindow");
+        } else if (choice === 'Open Chat Picker') {
+            try {
+                await vscode.commands.executeCommand("antigravity.openConversationPicker");
+            } catch {}
         }
     }
 
@@ -293,13 +285,6 @@ class ChatHistoryViewProvider {
 }
 
 function activate(context) {
-    // 1. Ensure Antigravity IDE workbench has native conversation loading enabled
-    try {
-        ensureWorkbenchPatched();
-    } catch (e) {
-        console.warn('[Antigravity Chat History] Workbench patch check:', e);
-    }
-
     const manager = new ConversationManager();
     manager.reload();
     manager.startWatching();

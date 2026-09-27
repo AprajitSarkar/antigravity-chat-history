@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Google%20Antigravity%20IDE-blueviolet.svg)](#)
-[![Version](https://img.shields.io/badge/Version-1.2.0-green.svg)](#)
+[![Version](https://img.shields.io/badge/Version-1.3.0-green.svg)](#)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#)
 
 > **Never lose AI chat history again.** A high-performance, permanent, searchable chat history sidebar extension for **Google Antigravity IDE** that guarantees 100% of your AI conversations, trajectory logs, and prompts remain preserved across laptop restarts, IDE reloads, and workspace switches.
@@ -27,14 +27,19 @@ Because it reads your persisted local databases directly, integrates natively wi
 
 ## 🌟 Key Features
 
-### 1. ⚡ One-Click Native Chat Restoration
-- Clicking any chat card in the sidebar immediately loads that entire conversation into Antigravity IDE's right-hand chat panel, exactly like the native top-right history picker.
-- You can immediately review past code responses and continue chatting seamlessly in that session.
-- If opening a chat from another project, pick between continuing in the current window or launching the original project window.
+### 1. 🛡️ 100% Native Architecture & Reboot Stability (v1.3.0)
+- **Zero Core Bundle Modifications**: Completely avoids modifying any core Antigravity IDE / VS Code bundles (`workbench.desktop.main.js`), strictly honoring official `product.json` integrity checksums.
+- **Zero Blank Screen Risk**: Completely eliminates startup crashes and blank screens across cold system reboots, sleep states, and window reloads.
+- **Clean Safe Operation**: Reads persisted conversation databases safely with zero file-locking conflicts.
 
-### 2. 🔝 Real-Time LRU Reordering (Active Chats Jump to Top)
+### 2. ⚡ Seamless Native Chat Restoration
+- Restores any conversation target for the current workspace with single-click ease.
+- When opening a chat from another workspace, launches the original workspace in a dedicated window with that session pre-loaded.
+- Quick action button allows immediate window reload or native chat picker invocation.
+
+### 3. 🔝 Real-Time LRU Reordering (Active Chats Jump to Top)
 - **Last-Recently-Used (LRU)** prioritization: Whenever an older chat session receives a new prompt or assistant message, its recency timestamp immediately updates and it automatically jumps to the very top (position 1) of the list.
-- Backed by recursive filesystem watchers on both `.db-wal` SQLite logs and `brain/<cid>/.system_generated/logs/transcript.jsonl`.
+- Backed by efficient, non-blocking filesystem monitoring on active conversation database write-ahead logs (`.db-wal`).
 
 ### 3. 🗂️ "All Chats" vs "By Directory" Categories
 - **All Chats**: Comprehensive chronological view of every chat session across all projects.

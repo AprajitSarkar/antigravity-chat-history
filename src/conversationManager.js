@@ -383,7 +383,6 @@ class ConversationManager {
     constructor() {
         this.cache = new Map();
         this.watcher = null;
-        this.brainWatcher = null;
         this.listeners = new Set();
         this.debounceTimer = null;
         this.pollInterval = null;
@@ -421,32 +420,16 @@ class ConversationManager {
             }
         }
 
-        if (fs.existsSync(BRAIN_DIR)) {
-            try {
-                this.brainWatcher = fs.watch(BRAIN_DIR, { recursive: true }, (eventType, filename) => {
-                    if (filename && (filename.includes('transcript') || filename.endsWith('.jsonl') || filename.endsWith('.md'))) {
-                        this.scheduleReload();
-                    }
-                });
-            } catch (e) {
-                console.error('Error starting fs.watch on BRAIN_DIR:', e);
-            }
-        }
-
-        // Secondary polling every 3 seconds to ensure real-time accuracy across active chats
+        // Secondary polling every 5 seconds to ensure real-time accuracy across active chats
         this.pollInterval = setInterval(() => {
             this.checkChanges();
-        }, 3000);
+        }, 5000);
     }
 
     stopWatching() {
         if (this.watcher) {
             try { this.watcher.close(); } catch {}
             this.watcher = null;
-        }
-        if (this.brainWatcher) {
-            try { this.brainWatcher.close(); } catch {}
-            this.brainWatcher = null;
         }
         if (this.pollInterval) {
             clearInterval(this.pollInterval);
@@ -465,11 +448,9 @@ class ConversationManager {
             for (const conv of this.cache.values()) {
                 const dbP = path.join(CONV_DIR, `${conv.cid}.db`);
                 const walP = path.join(CONV_DIR, `${conv.cid}.db-wal`);
-                const trP = path.join(BRAIN_DIR, conv.cid, '.system_generated', 'logs', 'transcript.jsonl');
                 let latestMs = 0;
                 if (fs.existsSync(dbP)) latestMs = Math.max(latestMs, fs.statSync(dbP).mtimeMs);
                 if (fs.existsSync(walP)) latestMs = Math.max(latestMs, fs.statSync(walP).mtimeMs);
-                if (fs.existsSync(trP)) latestMs = Math.max(latestMs, fs.statSync(trP).mtimeMs);
 
                 if (Math.abs(latestMs - conv.timestampMs) > 1000) {
                     this.reload();
@@ -493,8 +474,6 @@ class ConversationManager {
             }
             this.cache = newMap;
             this.notifyListeners();
-            // Automatically background sync to state.vscdb
-            this.syncToVscdb();
         } catch (e) {
             console.error('Error reloading conversations:', e);
         }
