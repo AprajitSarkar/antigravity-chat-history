@@ -237,7 +237,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .sort-toggle-btn {
@@ -253,6 +254,7 @@ body {
   cursor: pointer;
   transition: all 0.15s ease;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .sort-toggle-btn:hover {
@@ -277,6 +279,8 @@ body {
   gap: 4px;
   overflow-x: auto;
   scrollbar-width: none;
+  flex-wrap: nowrap;
+  max-width: 100%;
 }
 
 .date-chips::-webkit-scrollbar {
@@ -287,12 +291,13 @@ body {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
-  padding: 3px 8px;
+  padding: 3px 7px;
   border-radius: 12px;
   font-size: 10.5px;
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
 .date-chip:hover {
@@ -316,6 +321,8 @@ body {
   background: var(--bg-secondary);
   overflow: hidden;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  flex-shrink: 0;
+  min-height: 42px;
 }
 
 .dir-group:hover {
@@ -331,11 +338,13 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 9px 12px;
+  min-height: 42px;
   background: var(--bg-card);
   cursor: pointer;
   user-select: none;
   transition: background 0.15s ease;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .dir-header:hover {
@@ -346,37 +355,44 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
 }
 
 .dir-folder-icon {
   width: 16px;
   height: 16px;
+  min-width: 16px;
   color: #eab308;
   flex-shrink: 0;
+  display: inline-block;
 }
 
 .dir-info {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  gap: 1px;
+  gap: 2px;
+  overflow: hidden;
 }
 
 .dir-name-row {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 
 .dir-name {
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
+  line-height: 1.35;
   color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .dir-active-pill {
@@ -402,30 +418,38 @@ body {
 .dir-meta-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .dir-badge {
-  background: rgba(255, 255, 255, 0.07);
-  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.12);
+  color: #f3f4f6;
   padding: 2px 7px;
   border-radius: 10px;
   font-size: 11px;
-  font-weight: 600;
-  border: 1px solid var(--border-color);
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  flex-shrink: 0;
 }
 
 .dir-group.expanded .dir-badge {
   background: var(--accent-primary-subtle);
   color: var(--accent-primary);
-  border-color: rgba(79, 143, 247, 0.25);
+  border-color: rgba(79, 143, 247, 0.35);
 }
 
 .dir-chevron {
   width: 14px;
   height: 14px;
-  color: var(--text-muted);
+  min-width: 14px;
+  color: #9ca3af;
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   flex-shrink: 0;
 }
@@ -514,6 +538,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex-shrink: 0;
+  min-height: 54px;
 }
 
 .conv-card:hover {
@@ -927,4 +953,53 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   font-family: var(--font-mono);
+}
+
+/* Responsive Adaptations for All Screen / Sidebar Sizes */
+@media (max-width: 270px) {
+  .app-header {
+    padding: 10px 10px 6px 10px;
+    gap: 8px;
+  }
+  .controls-row {
+    gap: 6px;
+  }
+  .sort-toggle-btn {
+    font-size: 10.5px;
+    padding: 3px 6px;
+  }
+  .date-chip {
+    padding: 2px 6px;
+    font-size: 10px;
+  }
+  .dir-header {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  .dir-name {
+    font-size: 12px;
+  }
+  .dir-badge {
+    padding: 1px 5px;
+    font-size: 10px;
+    min-width: 20px;
+  }
+}
+
+@media (max-width: 230px) {
+  .controls-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .sort-toggle-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .date-chips {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .dir-path {
+    display: none;
+  }
 }
