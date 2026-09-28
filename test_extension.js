@@ -82,4 +82,28 @@ if (afterReset.title !== originalTitle) {
 }
 console.log('PASS: Successfully reset custom title!');
 
+console.log('\n=== TEST 6: Verify Conversation Viewer Assets & Details Parsing ===');
+const viewerHtml = path.join(__dirname, 'src', 'viewer', 'viewer.html');
+const viewerCss = path.join(__dirname, 'src', 'viewer', 'viewer.css');
+const viewerJs = path.join(__dirname, 'src', 'viewer', 'viewer.js');
+const viewerMgr = path.join(__dirname, 'src', 'viewer', 'conversationViewer.js');
+
+if (!fs.existsSync(viewerHtml) || !fs.existsSync(viewerCss) || !fs.existsSync(viewerJs) || !fs.existsSync(viewerMgr)) {
+    console.error('FAIL: Viewer assets missing!');
+    process.exit(1);
+}
+console.log('PASS: Conversation Viewer assets exist!');
+
+// Test getConversationDetails on first conversation
+const details = mgr.getConversationDetails(first.cid);
+console.log(`Parsed session title: "${details.conv.title}"`);
+console.log(`Parsed messages count: ${details.messages.length}`);
+console.log(`Discovered artifacts count: ${details.artifacts.length}`);
+
+if (!details.conv || !Array.isArray(details.messages) || !Array.isArray(details.artifacts)) {
+    console.error('FAIL: Invalid conversation details structure!');
+    process.exit(1);
+}
+console.log('PASS: Conversation details parsed properly!');
+
 console.log('\n=== ALL TESTS PASSED! ===');

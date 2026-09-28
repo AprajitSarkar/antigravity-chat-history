@@ -530,30 +530,99 @@ class ConversationManager {
         }
     }
 
-    setWorkspaceCascade(wsUri, cid) {
-        if (!fs.existsSync(VSCDB_PATH)) return false;
-        try {
-            const db = new DatabaseSync(VSCDB_PATH);
-            const row = db.prepare("SELECT value FROM ItemTable WHERE [key] = 'google.antigravity'").get();
-            let stateObj = {};
-            if (row && row.value) {
-                try { stateObj = JSON.parse(row.value); } catch {}
-            }
-            if (!stateObj['antigravity.workspaceCascadeMap']) {
-                stateObj['antigravity.workspaceCascadeMap'] = {};
-            }
-            stateObj['antigravity.workspaceCascadeMap'][wsUri] = cid;
-            const updated = JSON.stringify(stateObj);
-            db.prepare(`
-                INSERT OR REPLACE INTO ItemTable ([key], value)
-                VALUES ('google.antigravity', ?);
-            `).run(updated);
-            db.close();
-            return true;
-        } catch (e) {
-            console.error('Error setting workspaceCascadeMap in state.vscdb:', e);
-            return false;
+    getConversationDetails(cid) {
+        const conv = this.cache.get(cid) || this.getConversations().find(c => c.cid === cid);
+        const bdir = path.join(BRAIN_DIR, cid);
+        const tpath = path.join(bdir, '.system_generated', 'logs', 'transcript.jsonl');
+        const fullTpath = path.join(bdir, '.system_generated', 'logs', 'transcript_full.jsonl');
+        const logFile = fs.existsSync(tpath) ? tpath : (fs.existsSync(fullTpath) ? fullTpath : null);
+
+        // Scan for generated artifacts in the conversation brain folder
+        const artifacts = [];
+        if (fs.existsSync(bdir)) {
+            try {
+                const files = fs.readdirSync(bdir, { withFileTypes: true });
+                for (const f of files) {
+                    if (f.isFile() && (f.name.endsWith('.md') || f.name.endsWith('.json') || f.name.endsWith('.js') || f.name.endsWith('.txt') || f.name.endsWith('.html') || f.name.endsWith('.ps1') || f.name.endsWith('.sh'))) {
+                        const fullPath = path.join(bdir, f.name);
+                        try {
+                            const stat = fs.statSync(fullPath);
+                            artifacts.push({
+                                name: f.name,
+                                path: fullPath,
+                                size: stat.size,
+                                mtime: stat.mtimeMs
+                            });
+                        } catch {}
+                    }
+                }
+            } catch {}
         }
+
+        // Parse transcript steps into clean sequential messages
+        const messages = [];
+        if (logFile) {
+            try {
+                const content = fs.readFileSync(logFile, 'utf8');
+                const lines = content.split('\n');
+                for (const l of lines) {
+                    if (!l.trim()) continue;
+                    try {
+                        const step = JSON.parse(l);
+                        if (step.source === 'USER_EXPLICIT' && step.type === 'USER_INPUT') {
+                            let raw = step.content || '';
+                            const match = raw.match(/<USER_REQUEST>([\s\S]*?)<\/USER_REQUEST>/);
+                            const userText = match ? match[1].trim() : raw.trim();
+                            messages.push({
+                                role: 'user',
+                                stepIndex: step.step_index,
+                                time: step.created_at,
+                                text: userText || '[Voice / Audio or Attached Files]'
+                            });
+                        } else if (step.source === 'MODEL' && step.type === 'PLANNER_RESPONSE') {
+                            if (step.content || step.thinking || (step.tool_calls && step.tool_calls.length > 0)) {
+                                messages.push({
+                                    role: 'assistant',
+                                    stepIndex: step.step_index,
+                                    time: step.created_at,
+                                    text: step.content || '',
+                                    thinking: step.thinking || '',
+                                    toolCalls: step.tool_calls || []
+                                });
+                            }
+                        } else if (step.source === 'MODEL' && step.type !== 'PLANNER_RESPONSE') {
+                            messages.push({
+                                role: 'tool_result',
+                                stepIndex: step.step_index,
+                                time: step.created_at,
+                                type: step.type,
+                                output: (step.content || '').substring(0, 1500)
+                            });
+                        }
+                    } catch {}
+                }
+            } catch {}
+        }
+
+        return {
+            conv: conv || {
+                cid,
+                title: cid,
+                wsPath: '',
+                wsName: 'Global',
+                stepCount: messages.length,
+                relativeTime: 'Recently',
+                dateStr: new Date().toLocaleString()
+            },
+            artifacts,
+            messages,
+            logFilePath: logFile
+        };
+    }
+
+    setWorkspaceCascade(wsUri, cid) {
+        // Safe no-op to avoid state.vscdb lock issues or integrity flags
+        return true;
     }
 }
 

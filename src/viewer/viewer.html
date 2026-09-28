@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conversation Viewer</title>
+  <link rel="stylesheet" href="{{CSS_URI}}">
+</head>
+<body class="viewer-body">
+  <header class="viewer-header">
+    <div class="header-left">
+      <div class="header-badge-row">
+        <span id="wsBadge" class="ws-badge" title="Workspace Directory">Workspace</span>
+        <span id="dateBadge" class="meta-badge" title="Session Date">Date</span>
+        <span id="stepCountBadge" class="meta-badge steps-badge" title="Total interaction steps">0 steps</span>
+      </div>
+      <h1 id="convTitle" class="conv-title">Loading Conversation...</h1>
+      <div id="convIdSub" class="conv-id-sub"></div>
+    </div>
+    <div class="header-right">
+      <button id="btnOpenWs" class="action-btn primary-btn" title="Open this project in a separate workspace window">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+        <span>Open Project</span>
+      </button>
+      <button id="btnFocusChat" class="action-btn" title="Focus Antigravity Agent Chat side panel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        <span>Agent Chat</span>
+      </button>
+      <button id="btnCopyId" class="action-btn" title="Copy Conversation ID">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+        <span>Copy ID</span>
+      </button>
+      <button id="btnOpenLogs" class="action-btn" title="Open raw transcript.jsonl file">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+        <span>Raw Log</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="viewer-search-bar">
+    <div class="search-input-wrapper">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" id="viewerSearch" placeholder="Search prompts, responses, tool calls..." spellcheck="false">
+      <button id="clearViewerSearch" class="clear-search-btn" style="display:none">&times;</button>
+    </div>
+    <div id="searchMatchCount" class="match-count"></div>
+  </div>
+
+  <section id="artifactsShelf" class="artifacts-shelf" style="display:none">
+    <div class="shelf-header">
+      <span class="shelf-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        Artifacts & Session Files
+      </span>
+      <span id="artifactsCount" class="shelf-count">0 files</span>
+    </div>
+    <div id="artifactsGrid" class="artifacts-grid"></div>
+  </section>
+
+  <main id="messagesContainer" class="messages-container">
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Parsing conversation messages...</p>
+    </div>
+  </main>
+
+  <div id="toastNotification" class="toast" style="display:none"></div>
+
+  <script src="{{JS_URI}}"></script>
+</body>
+</html>
