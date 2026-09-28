@@ -127,8 +127,8 @@ class ChatHistoryViewProvider {
     async showWorkspaceQuickPick(cid, wsPath, title) {
         const items = [
             {
-                label: "$(eye) View Conversation in Editor",
-                description: "Open the complete transcript and actions in current window",
+                label: "$(comment-discussion) Open in Agent Chat (Right Panel)",
+                description: "Focus the Agent chat panel on the right side",
                 action: 'current'
             }
         ];
@@ -138,7 +138,7 @@ class ChatHistoryViewProvider {
                 const targetUri = vscode.Uri.parse(wsPath);
                 items.push({
                     label: `$(folder) Open in workspace: ${targetUri.fsPath}`,
-                    description: "Open the project folder in a new window",
+                    description: "Open the project folder in a dedicated window",
                     action: 'target',
                     targetUri
                 });
@@ -160,16 +160,30 @@ class ChatHistoryViewProvider {
     }
 
     async openInCurrentWindow(cid, title) {
-        // 1. Open the rich interactive conversation viewer tab
-        await this._viewer.openConversation(cid, title);
+        const conv = this._manager.getConversations().find(c => c.cid === cid);
+        const searchTarget = title || conv?.title || cid;
 
-        // 2. Focus the Antigravity agent chat view
+        // 1. Copy the chat title to clipboard for instant matching
+        if (searchTarget) {
+            try {
+                await vscode.env.clipboard.writeText(searchTarget);
+            } catch {}
+        }
+
+        // 2. Open and focus the Antigravity Agent chat panel on the right side
         try {
             await vscode.commands.executeCommand("workbench.view.extension.antigravity.agentViewContainerId");
         } catch {}
         try {
             await vscode.commands.executeCommand("antigravity.openChatView");
         } catch {}
+
+        // 3. Immediately trigger Antigravity's native conversation switcher
+        try {
+            await vscode.commands.executeCommand("antigravity.openConversationPicker");
+        } catch (e) {
+            console.warn('Could not trigger antigravity.openConversationPicker:', e);
+        }
     }
 
     async openInWorkspace(cid, wsPath) {
